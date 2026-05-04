@@ -1,0 +1,5 @@
+# Stock Portfolio Suggestion Engine — IST / CSC-style term project deps
+pandas>=2.1.0
+plotly>=5.18.0
+streamlit>=1.39.0
+yfinance>=0.2.40

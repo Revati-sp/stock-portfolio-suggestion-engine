@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env
+
+# OS / IDE
+.DS_Store
+.idea/
+
+# Streamlit secrets (never commit API keys locally)
+.streamlit/secrets.toml
