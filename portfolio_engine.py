@@ -98,6 +98,106 @@ def fetch_ticker_price(ticker: str) -> PriceQuote:
     return PriceQuote(price=None, error_message="Could not derive a positive price")
 
 
+def extract_priced_holdings(df: pd.DataFrame) -> List[Tuple[str, float]]:
+    """Ticker + share pairs for rows that were successfully priced."""
+    rows: List[Tuple[str, float]] = []
+    for _, row in df.iterrows():
+        sym = row.get("Ticker")
+        sh = row.get("Shares")
+        if sym is None or sh is None or (isinstance(sh, float) and pd.isna(sh)):
+            continue
+        rows.append((str(sym), float(sh)))
+    return rows
+
+
+def mark_to_market_holdings(
+    holdings: Sequence[Tuple[str, float]],
+    *,
+    quote_fn: Optional[Callable[[str], PriceQuote]] = None,
+) -> Tuple[float, List[str]]:
+    """
+    Sum shares × fresh quote for each line; skip missing prices with warnings.
+
+    Returns (total_usd, warning_messages).
+    """
+    qfetch = quote_fn or fetch_ticker_price
+    warnings: List[str] = []
+    total = 0.0
+    for ticker, shares in holdings:
+        pq = qfetch(ticker)
+        if not pq.ok or pq.price is None:
+            msg = pq.error_message or "no price"
+            warnings.append(f"{ticker}: {msg}")
+            continue
+        total += float(shares) * float(pq.price)
+    return round(total, 2), warnings
+
+
+def build_portfolio_table_from_saved(
+    payload: Dict[str, Any],
+    *,
+    quote_fn: Optional[Callable[[str], PriceQuote]] = None,
+) -> Tuple[pd.DataFrame, List[str]]:
+    """
+    Rebuild the same table shape as `build_portfolio_table` from `current_holdings.json`
+    using fresh quotes. `dollar_per_ticker` is optional in older JSON (fallback heuristic).
+    """
+    qfetch = quote_fn or fetch_ticker_price
+    strategies = list(payload.get("strategies") or [])
+    holdings_raw = payload.get("holdings") or []
+    inv = float(payload.get("investment_amount") or 0.0)
+    per_raw = payload.get("dollar_per_ticker")
+    if per_raw is not None:
+        per = float(per_raw)
+    else:
+        per = inv / max(len(holdings_raw), 1)
+
+    strat_map = ticker_to_strategy(strategies)
+    warnings: List[str] = []
+    rows: List[Dict[str, Any]] = []
+
+    for item in holdings_raw:
+        if not item or len(item) < 2:
+            continue
+        sym, shares = str(item[0]), float(item[1])
+        pq = qfetch(sym)
+        if not pq.ok:
+            msg = pq.error_message or "Unknown pricing error"
+            warnings.append(f"{sym}: {msg}")
+            rows.append(
+                {
+                    "Ticker": sym,
+                    "Strategy": strat_map.get(sym, ""),
+                    "Allocation (USD)": round(per, 2),
+                    "Current Price (USD)": None,
+                    "Shares": round(shares, 6),
+                    "Current Value (USD)": None,
+                    "Gain/Loss (USD)": None,
+                }
+            )
+            continue
+        price = float(pq.price) if pq.price is not None else 0.0
+        curr_val = shares * price
+        gain_loss = curr_val - per
+        rows.append(
+            {
+                "Ticker": sym,
+                "Strategy": strat_map.get(sym, ""),
+                "Allocation (USD)": round(per, 2),
+                "Current Price (USD)": round(price, 4),
+                "Shares": round(shares, 6),
+                "Current Value (USD)": round(curr_val, 2),
+                "Gain/Loss (USD)": round(gain_loss, 2),
+            }
+        )
+
+    df = pd.DataFrame(rows)
+    if not df.empty:
+        df.sort_values(by="Ticker", inplace=True)
+        df.reset_index(drop=True, inplace=True)
+    return df, warnings
+
+
 def unique_tickers_for_strategies(selected: Sequence[str]) -> List[str]:
     """Preserve original strategy order while de-duplicating tickers."""
     seen = set()

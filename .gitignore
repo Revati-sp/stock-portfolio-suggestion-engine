@@ -12,3 +12,11 @@ venv/
 
 # Streamlit secrets (never commit API keys locally)
 .streamlit/secrets.toml
+
+# Local portfolio snapshots (generated at runtime; per-user data in user_data/)
+portfolio_history.csv
+portfolio_daily_trend.csv
+current_holdings.json
+
+# Per-user portfolio files (local only)
+user_data/
