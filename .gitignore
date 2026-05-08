@@ -10,11 +10,6 @@ venv/
 .DS_Store
 .idea/
 
-# Streamlit / local secrets (never commit passwords or API keys)
-.streamlit/secrets.toml
-secrets.toml
-**/secrets.toml
-
 # Local portfolio snapshots (generated at runtime; per-user data in user_data/)
 portfolio_history.csv
 portfolio_daily_trend.csv
