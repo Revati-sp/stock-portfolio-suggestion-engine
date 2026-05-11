@@ -1,5 +1,23 @@
-# Stock Portfolio Suggestion Engine — IST / CSC-style term project deps
+# Stock Portfolio Suggestion Engine — Streamlit frontend + FastAPI backend
+
+# Web frameworks & API
+fastapi>=0.110.0
+streamlit>=1.39.0
+uvicorn[standard]>=0.29.0
+
+# Data processing & visualization
 pandas>=2.1.0
 plotly>=5.18.0
-streamlit>=1.39.0
+
+# Financial data
 yfinance>=0.2.40
+
+# Authentication & security
+bcrypt>=4.1.0
+PyJWT>=2.8.0
+
+# Utilities
+python-multipart>=0.0.6
+
+# TOML parsing (Python <3.11 only; 3.11+ includes tomllib in stdlib)
+tomli>=2.0.0;python_version<"3.11"

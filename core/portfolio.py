@@ -12,101 +12,29 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import pandas as pd
-import yfinance as yf
 
-from data import STRATEGY_TICKERS, ticker_to_strategy
-
-
-@dataclass
-class PriceQuote:
-    """Single ticker's fetched price outcome."""
-
-    price: Optional[float]
-    error_message: Optional[str] = None
-
-    @property
-    def ok(self) -> bool:
-        return self.price is not None and self.price > 0
+from core.strategies import STRATEGY_TICKERS, ticker_to_strategy
+from core.quotes import _extract_price, fetch_ticker_price, fetch_previous_close, PriceQuote
+from core.market_cap import compute_allocations
 
 
-def _extract_price(payload: Dict[str, Any]) -> Tuple[Optional[float], Optional[str]]:
-    """
-    Try several common Yahoo fields; return (price_or_none, error_or_none).
-
-    Avoids brittle reliance on any single Yahoo JSON key changing.
-    """
-    candidates = [
-        ("regularMarketPrice", payload.get("regularMarketPrice")),
-        ("previousClose", payload.get("regularMarketPreviousClose")),
-        ("postMarketPrice", payload.get("postMarketPrice")),
-        ("preMarketPrice", payload.get("preMarketPrice")),
-    ]
-    for label, raw in candidates:
-        try:
-            if raw is None:
-                continue
-            val = float(raw)
-            if val > 0:
-                return val, None
-        except (TypeError, ValueError):
-            continue
-    return None, "No usable price fields in ticker info"
 
 
-def fetch_ticker_price(ticker: str) -> PriceQuote:
-    """
-    Latest available price via yfinance, with graceful fallbacks.
-
-    Order: ticker.info shortcuts -> fast_info -> recent daily close history.
-    """
-    t = yf.Ticker(ticker)
-    # 1) Primary: full info blob (often has regularMarketPrice)
-    try:
-        info = getattr(t, "info", {}) or {}
-        if isinstance(info, dict) and info:
-            px, _err = _extract_price(info)
-            if px is not None:
-                return PriceQuote(price=px, error_message=None)
-    except Exception:
-        pass
-
-    # 2) Lightweight fast_info dict (fewer keys, quicker)
-    try:
-        fi = getattr(t, "fast_info", None)
-        last = getattr(fi, "last_price", None) if fi is not None else None
-        if last is not None:
-            val = float(last)
-            if val > 0:
-                return PriceQuote(price=val, error_message=None)
-    except Exception:
-        pass
-
-    # 3) Last resort: closing price from compact history window
-    try:
-        hist = t.history(period="5d", auto_adjust=False)
-        if hist is None or hist.empty:
-            return PriceQuote(
-                price=None,
-                error_message="Empty price history returned by Yahoo Finance",
-            )
-        close = float(hist["Close"].iloc[-1])
-        if close > 0:
-            return PriceQuote(price=close, error_message=None)
-    except Exception as exc:
-        return PriceQuote(price=None, error_message=f"history fallback failed: {exc}")
-
-    return PriceQuote(price=None, error_message="Could not derive a positive price")
 
 
-def extract_priced_holdings(df: pd.DataFrame) -> List[Tuple[str, float]]:
-    """Ticker + share pairs for rows that were successfully priced."""
-    rows: List[Tuple[str, float]] = []
+def extract_priced_holdings(df: pd.DataFrame) -> List[Tuple[str, float, float, float]]:
+    """Ticker + shares + allocation + purchase_price quads for successfully priced rows."""
+    rows: List[Tuple[str, float, float, float]] = []
     for _, row in df.iterrows():
         sym = row.get("Ticker")
         sh = row.get("Shares")
+        alloc = row.get("Allocation (USD)")
+        px = row.get("Purchase Price (USD)")
         if sym is None or sh is None or (isinstance(sh, float) and pd.isna(sh)):
             continue
-        rows.append((str(sym), float(sh)))
+        alloc = 0.0 if alloc is None or (isinstance(alloc, float) and pd.isna(alloc)) else float(alloc)
+        px = 0.0 if px is None or (isinstance(px, float) and pd.isna(px)) else float(px)
+        rows.append((str(sym), float(sh), alloc, px))
     return rows
 
 
@@ -129,6 +57,8 @@ def mark_to_market_holdings(
             msg = pq.error_message or "no price"
             warnings.append(f"{ticker}: {msg}")
             continue
+        elif pq.error_message:
+            warnings.append(f"{ticker}: {pq.error_message}")
         total += float(shares) * float(pq.price)
     return round(total, 2), warnings
 
@@ -147,7 +77,10 @@ def build_portfolio_table_from_saved(
     holdings_raw = payload.get("holdings") or []
     inv = float(payload.get("investment_amount") or 0.0)
     per_raw = payload.get("dollar_per_ticker")
-    if per_raw is not None:
+    # per_raw can be dict (new format) or float (old format)
+    if isinstance(per_raw, dict):
+        per = inv / max(len(holdings_raw), 1)  # Fallback; will use per_raw lookup for new format
+    elif per_raw is not None:
         per = float(per_raw)
     else:
         per = inv / max(len(holdings_raw), 1)
@@ -160,6 +93,9 @@ def build_portfolio_table_from_saved(
         if not item or len(item) < 2:
             continue
         sym, shares = str(item[0]), float(item[1])
+        alloc = float(item[2]) if len(item) >= 3 else per
+        # Purchase price stored at generation time — enables real gain/loss on re-pricing
+        purchase_px = float(item[3]) if len(item) >= 4 and item[3] else None
         pq = qfetch(sym)
         if not pq.ok:
             msg = pq.error_message or "Unknown pricing error"
@@ -168,26 +104,45 @@ def build_portfolio_table_from_saved(
                 {
                     "Ticker": sym,
                     "Strategy": strat_map.get(sym, ""),
-                    "Allocation (USD)": round(per, 2),
+                    "Allocation (USD)": round(alloc, 2),
+                    "Purchase Price (USD)": purchase_px,
                     "Current Price (USD)": None,
                     "Shares": round(shares, 6),
                     "Current Value (USD)": None,
-                    "Gain/Loss (USD)": None,
+                    "Day Gain/Loss (USD)": None,
+                    "Total Gain/Loss (USD)": None,
                 }
             )
             continue
+        elif pq.error_message:
+            warnings.append(f"{sym}: {pq.error_message}")
         price = float(pq.price) if pq.price is not None else 0.0
         curr_val = shares * price
-        gain_loss = curr_val - per
+
+        # Total gain/loss: since inception (purchase price vs current)
+        if purchase_px is not None and purchase_px > 0:
+            total_gl = round(curr_val - purchase_px * shares, 2)
+        else:
+            total_gl = round(curr_val - alloc, 2)
+
+        # Day's gain/loss: current price vs previous close
+        prev_close = fetch_previous_close(sym)
+        if prev_close is not None and prev_close > 0 and shares > 0:
+            day_gl = round((price - prev_close) * shares, 2)
+        else:
+            day_gl = None
+
         rows.append(
             {
                 "Ticker": sym,
                 "Strategy": strat_map.get(sym, ""),
-                "Allocation (USD)": round(per, 2),
+                "Allocation (USD)": round(alloc, 2),
+                "Purchase Price (USD)": purchase_px,
                 "Current Price (USD)": round(price, 4),
                 "Shares": round(shares, 6),
                 "Current Value (USD)": round(curr_val, 2),
-                "Gain/Loss (USD)": round(gain_loss, 2),
+                "Day Gain/Loss (USD)": day_gl,
+                "Total Gain/Loss (USD)": total_gl,
             }
         )
 
@@ -227,12 +182,18 @@ def build_portfolio_table(
     if n == 0:
         return pd.DataFrame(), ["No tickers resolved for chosen strategies"]
 
-    per_asset = investment_usd / float(n)
     strat_map = ticker_to_strategy(selected_strategies)
     warnings: List[str] = []
 
+    # Compute market-cap weighted allocations (fallback to strategy-level for missing caps)
+    allocations, alloc_warnings = compute_allocations(
+        tickers, investment_usd, strategies=selected_strategies
+    )
+    warnings.extend(alloc_warnings)
+
     rows: List[Dict[str, Any]] = []
     for sym in tickers:
+        per_asset = allocations[sym]
         pq = qfetch(sym)  # Isolate quote lookup so malformed JSON never crashes Streamlit reruns.
 
         # Yahoo occasionally omits realtime keys; record the failure but keep the ticker row printable.
@@ -251,21 +212,31 @@ def build_portfolio_table(
                 }
             )
             continue
+        elif pq.error_message:
+            warnings.append(f"{sym}: {pq.error_message}")
 
         price = pq.price if pq.price is not None else 0.0
         shares = per_asset / price if price > 0 else 0.0
         curr_val = shares * price
-        gain_loss = curr_val - per_asset
+
+        # Day's gain/loss: compare current price against previous trading day's close
+        prev_close = fetch_previous_close(sym)
+        if prev_close is not None and prev_close > 0 and shares > 0:
+            day_gl = round((price - prev_close) * shares, 2)
+        else:
+            day_gl = None
 
         rows.append(
             {
                 "Ticker": sym,
                 "Strategy": strat_map.get(sym, ""),
                 "Allocation (USD)": round(per_asset, 2),
+                "Purchase Price (USD)": round(price, 4),
                 "Current Price (USD)": round(price, 4),
                 "Shares": round(shares, 6),
                 "Current Value (USD)": round(curr_val, 2),
-                "Gain/Loss (USD)": round(gain_loss, 2),
+                "Day Gain/Loss (USD)": day_gl,
+                "Total Gain/Loss (USD)": 0.0,  # 0 at generation; updates on reload
             }
         )
 

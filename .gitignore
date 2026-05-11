@@ -17,3 +17,6 @@ current_holdings.json
 
 # Per-user portfolio files (local only)
 user_data/
+
+# Runtime SQLite database
+portfolio.db
