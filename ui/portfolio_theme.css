@@ -1,0 +1,260 @@
+/* Portfolio Engine — layout polish and design tokens */
+
+[data-testid="stAppViewContainer"] {
+    --page-max: 1320px;
+    --space-page-x: 24px;
+    --space-page-x-mobile: 16px;
+    --space-section: 2rem;
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 16px;
+    --shadow-card-soft: 0 1px 2px color-mix(in srgb, var(--shadow-card) 80%, transparent);
+    --shadow-card-hover: 0 10px 28px color-mix(in srgb, var(--shadow-card) 55%, transparent);
+}
+
+[data-testid="stAppViewContainer"]:not(:has(.auth-screen-marker)) {
+    background: var(--bg-muted) !important;
+}
+
+section[data-testid="stMain"] > div > [data-testid="block-container"] {
+    max-width: var(--page-max) !important;
+    padding-left: var(--space-page-x) !important;
+    padding-right: var(--space-page-x) !important;
+    padding-top: 0.75rem !important;
+    padding-bottom: 2.5rem !important;
+}
+
+@media (max-width: 767px) {
+    section[data-testid="stMain"] > div > [data-testid="block-container"] {
+        padding-left: var(--space-page-x-mobile) !important;
+        padding-right: var(--space-page-x-mobile) !important;
+    }
+}
+
+.section-label {
+    margin: var(--space-section) 0 0.85rem 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+.portfolio-section-label {
+    margin-bottom: 1rem;
+}
+
+.portfolio-top-nav-wrap {
+    margin: 0 0 1.25rem;
+    padding: 0.35rem 0 0.85rem;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg-elevated) 96%, transparent);
+}
+
+.portfolio-top-nav {
+    grid-template-columns: 1fr auto !important;
+    column-gap: 1.25rem;
+    min-height: 3.25rem;
+}
+
+.portfolio-top-nav__zone--left {
+    justify-self: start;
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.portfolio-top-nav__zone--right {
+    justify-self: end;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    flex-wrap: nowrap;
+    min-width: 0;
+}
+
+.portfolio-top-nav__market {
+    margin-right: 0.15rem;
+    white-space: nowrap;
+}
+
+.app-market-meta--toolbar {
+    text-align: left;
+}
+
+.portfolio-top-nav__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.portfolio-top-nav__logo {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.65rem;
+    background: linear-gradient(145deg, #1e3a5f, #0f172a);
+    color: #f8fafc;
+    font-size: 0.95rem;
+    line-height: 1;
+    box-shadow: var(--shadow-card-soft);
+}
+
+.portfolio-top-nav__title {
+    font-size: clamp(1.05rem, 1.6vw, 1.35rem) !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em;
+}
+
+.portfolio-top-nav__pill {
+    min-height: 2.25rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.portfolio-top-nav__pill:hover,
+.portfolio-top-nav__pill:focus-visible {
+    color: var(--accent);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    background: var(--bg-elevated);
+    outline: none;
+    box-shadow: var(--shadow-card-soft);
+}
+
+.portfolio-top-nav__pill--active {
+    border-color: var(--banner-border);
+    background: var(--banner-bg);
+    color: var(--banner-txt);
+}
+
+[data-testid="stMarkdownContainer"]:has(.portfolio-builder-anchor) + [data-testid="stVerticalBlockBorderWrapper"] {
+    border-radius: var(--radius-lg) !important;
+    padding: 1.25rem 1.35rem 1.35rem !important;
+    box-shadow: var(--shadow-card-soft) !important;
+}
+
+.holdings-dashboard {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 3fr);
+    gap: 1.25rem;
+    align-items: stretch;
+    margin: 0 0 1.5rem;
+}
+
+.holdings-card {
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.35rem;
+    box-shadow: var(--shadow-card-soft);
+}
+
+.holdings-card--table,
+.holdings-card--summary {
+    grid-column: auto;
+}
+
+.holdings-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.85rem;
+}
+
+.holdings-table th {
+    padding: 0.65rem 0.85rem;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+}
+
+.holdings-table td {
+    padding: 0.85rem;
+    font-size: 0.84rem;
+}
+
+.holdings-table tbody tr {
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 65%, transparent);
+}
+
+.holdings-symbol-badge {
+    width: 2.65rem;
+    height: 2.65rem;
+    border-radius: 0.65rem;
+    font-size: 0.68rem;
+}
+
+.holdings-price-sub {
+    margin-top: 0.2rem;
+    font-size: 0.72rem;
+}
+
+.holdings-table-footer {
+    margin-top: 0.85rem;
+    padding: 0.85rem;
+    border-radius: var(--radius-sm);
+}
+
+.holdings-card--summary {
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-card-soft);
+}
+
+.dashboard-anchor + [data-testid="stHorizontalBlock"] {
+    gap: 1.25rem !important;
+    align-items: stretch !important;
+}
+
+.dashboard-anchor + [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+    border-radius: var(--radius-lg);
+    padding: 1.15rem 1.25rem 1rem !important;
+    box-shadow: var(--shadow-card-soft);
+}
+
+.dashboard-chart-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0 0 0.35rem;
+}
+
+.dashboard-chart-note {
+    margin-top: 0.35rem;
+    font-size: 0.75rem;
+}
+
+.dashboard-anchor + [data-testid="stHorizontalBlock"] [data-testid="stPlotlyChart"] {
+    margin-top: -0.15rem !important;
+}
+
+.dashboard-disclaimer {
+    margin-top: 1.25rem;
+    border-radius: var(--radius-sm);
+}
+
+@media (max-width: 1024px) {
+    .holdings-dashboard {
+        grid-template-columns: 1fr;
+    }
+
+    .portfolio-top-nav {
+        grid-template-columns: 1fr !important;
+        row-gap: 0.65rem;
+    }
+
+    .portfolio-top-nav__zone--left,
+    .portfolio-top-nav__zone--right {
+        justify-self: stretch;
+        justify-content: center;
+    }
+
+    .portfolio-top-nav__zone--right {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 767px) {
+    .dashboard-anchor + [data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+    }
+}

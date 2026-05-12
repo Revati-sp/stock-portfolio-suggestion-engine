@@ -14,6 +14,7 @@ from database.connection import get_db, get_user_id
 from auth.hashing import hash_password, verify_hash
 
 _MAX_USER_LEN = 48
+_MIN_PASSWORD_LEN = 8
 _USER_RE = re.compile(r"^[a-zA-Z0-9][-a-zA-Z0-9_]{0,47}$")
 
 
@@ -29,21 +30,55 @@ def sanitize_username(raw: str) -> Optional[str]:
 
 def create_user(username: str, plain_password: str) -> None:
     """Create a new user with a bcrypt-hashed password."""
+    slug = sanitize_username(username)
+    if not slug:
+        raise ValueError("invalid username")
     hashed = hash_password(plain_password)
     conn = get_db()
     try:
         conn.execute(
             "INSERT OR IGNORE INTO users (username, password_hash) VALUES (?, ?)",
-            (username, hashed),
+            (slug, hashed),
         )
         conn.commit()
     finally:
         conn.close()
 
 
+def password_policy_error(plain: str) -> Optional[str]:
+    if not plain or len(plain) < _MIN_PASSWORD_LEN:
+        return f"Password must be at least {_MIN_PASSWORD_LEN} characters."
+    return None
+
+
+def register_user(username: str, plain_password: str) -> tuple[bool, str]:
+    slug = sanitize_username(username)
+    if not slug:
+        return (
+            False,
+            "Username must start with a letter or number and use only letters, numbers, hyphens, and underscores.",
+        )
+
+    policy_error = password_policy_error(plain_password)
+    if policy_error:
+        return False, policy_error
+
+    if get_user_id(slug) is not None:
+        return False, "That username is already taken. Sign in or choose another username."
+
+    create_user(slug, plain_password)
+    if get_user_id(slug) is None:
+        return False, "Could not create account. Please try again."
+
+    return True, "Account created. You are signed in."
+
+
 def verify_password(username: str, plain: str) -> bool:
     """Verify a plain-text password against the bcrypt hash in the DB."""
-    user_id = get_user_id(username)
+    slug = sanitize_username(username)
+    if not slug:
+        return False
+    user_id = get_user_id(slug)
     if user_id is None:
         return False
 

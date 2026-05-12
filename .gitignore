@@ -20,3 +20,12 @@ user_data/
 
 # Runtime SQLite database
 portfolio.db
+
+# Node / frontend
+node_modules/
+.next/
+*.env.local
+*.tsbuildinfo
+
+# Streamlit local secrets (use secrets.toml.example)
+.streamlit/secrets.toml
