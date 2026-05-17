@@ -9,7 +9,7 @@ import streamlit as st
 from auth.resume import portfolio_resume_token
 from auth.users import sanitize_username
 
-_APP_VIEWS = frozenset({"portfolio", "history"})
+_APP_VIEWS = frozenset({"portfolio", "history", "news"})
 _DEFAULT_VIEW = "portfolio"
 _APP_VIEW_KEY = "app_view"
 

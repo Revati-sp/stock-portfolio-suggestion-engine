@@ -13,6 +13,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import streamlit as st
+from ui.market_news import render_market_news
 from ui.portfolio_history import render_portfolio_history
 from ui.session_cache import clear_session_portfolio_cache
 from ui.navigation import resolve_active_view
@@ -1497,10 +1498,6 @@ def portfolio_snapshot_key(slug: str) -> str:
     return f"portfolio_snapshot_{slug}"
 
 
-def _news_app_base_url() -> str:
-    return os.environ.get("NEWS_APP_URL", "http://127.0.0.1:3000").rstrip("/")
-
-
 def _portfolio_app_url() -> str:
     configured = os.environ.get("PORTFOLIO_APP_URL", "").strip()
     if configured:
@@ -1553,23 +1550,6 @@ def try_restore_session_from_return_link() -> None:
         if key in st.query_params:
             del st.query_params[key]
     st.rerun()
-
-
-def _news_url_for_user(slug: str) -> str:
-    tickers: list[str] = []
-    snapshot = st.session_state.get(portfolio_snapshot_key(slug))
-    if snapshot:
-        present = snapshot.get("present")
-        if present is not None and not present.empty and "Ticker" in present.columns:
-            tickers = sorted({str(ticker) for ticker in present["Ticker"].tolist() if str(ticker)})
-    if not tickers:
-        disk = load_current_holdings(slug)
-        if disk and disk.get("holdings"):
-            tickers = sorted({str(holding[0]) for holding in disk["holdings"] if holding and len(holding) >= 1})
-    if not tickers:
-        tickers = ["VTI", "AAPL", "TSLA", "AMZN"]
-    return f"{_news_app_base_url()}/news?{urlencode({'tickers': ','.join(tickers), **_portfolio_return_query(slug)})}"
-
 
 
 def hydrate_portfolio_from_disk(slug: str) -> None:
@@ -2185,12 +2165,15 @@ active_view = resolve_active_view()
 with app_header.container():
     render_portfolio_top_bar(
         active_view=active_view,
-        news_url=_news_url_for_user(user_slug),
         user_slug=user_slug,
     )
 
 if active_view == "history":
     render_portfolio_history(user_slug)
+    st.stop()
+
+if active_view == "news":
+    render_market_news(user_slug)
     st.stop()
 
 
