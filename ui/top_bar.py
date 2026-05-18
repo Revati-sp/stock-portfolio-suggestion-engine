@@ -14,7 +14,8 @@ def render_portfolio_top_bar(
     *,
     active_view: str,
     user_slug: str,
-) -> None:
+) -> bool:
+    """Render the top navigation bar. Returns True if the user clicked Log out."""
     now = datetime.now()
     is_weekend = now.weekday() >= 5
     market_label = "Market Closed" if is_weekend else "Live Market"
@@ -42,8 +43,12 @@ def render_portfolio_top_bar(
     if active_view == "news":
         news_classes.append("portfolio-top-nav__pill--active")
 
-    st.markdown(
-        f"""
+    # Nav links column (wide) + logout button column (narrow)
+    nav_col, logout_col = st.columns([9, 1], gap="small")
+
+    with nav_col:
+        st.markdown(
+            f"""
 <div class="portfolio-top-nav-wrap">
   <nav class="portfolio-top-nav" aria-label="Portfolio navigation">
     <div class="portfolio-top-nav__zone portfolio-top-nav__zone--left">
@@ -63,10 +68,21 @@ def render_portfolio_top_bar(
       </div>
       <a class="{' '.join(history_classes)}" href="{history_href}">Portfolio History</a>
       <a class="{' '.join(news_classes)}" href="{news_href}">Market News</a>
-      <a class="portfolio-top-nav__pill" href="?logout=1">Log out</a>
     </div>
   </nav>
 </div>
 """,
-        unsafe_allow_html=True,
-    )
+            unsafe_allow_html=True,
+        )
+
+    with logout_col:
+        # Native Streamlit button so logout fires in the same tab/session,
+        # not in a new tab the way <a href> links behave inside Streamlit.
+        return st.button(
+            "Log out",
+            key="top_bar_logout_btn",
+            type="tertiary",
+            use_container_width=True,
+        )
+
+    return False  # unreachable but satisfies type checkers

@@ -3,6 +3,26 @@ data.py — Investment strategy mappings and metadata.
 
 Each strategy maps to at least three equities (stocks or ETFs) used when
 building a diversified suggestion portfolio for the user's selected strategies.
+
+Strategy rationale (see README § Investment Methodology for full citations):
+  Ethical Investing   — ESG-screened large caps with carbon-neutrality commitments
+                        AAPL (carbon neutral 2030, RE100), ADBE (MSCI ESG AAA),
+                        MSFT (carbon negative 2030 pledge, Climate Innovation Fund)
+  Growth Investing    — High-revenue-growth companies in expanding markets
+                        NVDA (AI GPU monopoly, >200% YoY data-centre revenue),
+                        AMZN (AWS cloud leader + advertising flywheel),
+                        TSLA (EV pioneer, energy storage, autonomy platform)
+  Index Investing     — Passive market exposure via low-cost diversified ETFs
+                        VTI (total US market, 0.03% ER), IXUS (4,300 intl stocks),
+                        BND (US investment-grade bonds, portfolio stabiliser)
+  Quality Investing   — High ROIC, durable moat, consistent free cash flow
+                        COST (90%+ membership renewal, 20%+ ROIC),
+                        JNJ (60+ yr dividend growth, diversified healthcare),
+                        PG (67+ yr Dividend King, brand pricing power)
+  Value Investing     — Securities trading below estimated intrinsic value
+                        BRK-B (sum-of-parts discount, Buffett capital discipline),
+                        JPM (best-managed US bank, ROE >15%, P/B entry points),
+                        XOM (single-digit P/E at commodity lows, dividend through cycles)
 """
 
 # Display name -> list of Yahoo Finance ticker symbols

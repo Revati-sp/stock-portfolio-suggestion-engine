@@ -2163,10 +2163,17 @@ user_slug = st.session_state.user_slug
 active_view = resolve_active_view()
 
 with app_header.container():
-    render_portfolio_top_bar(
+    _logout_clicked = render_portfolio_top_bar(
         active_view=active_view,
         user_slug=user_slug,
     )
+
+if _logout_clicked:
+    clear_session_portfolio_cache()
+    st.session_state.user_slug = None
+    st.session_state.pop("auth_panel", None)
+    st.session_state.pop("app_view", None)
+    st.rerun()
 
 if active_view == "history":
     render_portfolio_history(user_slug)
