@@ -213,7 +213,7 @@ Tests live in `tests/` and require no network access or secrets — they use moc
 **Run all tests:**
 
 ```bash
-python -m pytest tests/test_project_functions.py -v
+python -m pytest tests/ -v
 ```
 
 **Run a single test class:**
@@ -237,11 +237,21 @@ python -m pytest tests/test_project_functions.py::TestRiskScoring -v
 | 9 | `TestStrategyAllocation` | `core.market_cap._allocate_by_strategy` | Equal split per strategy/ticker, total equals investment |
 | 10 | `TestComputeAllocations` | `core.market_cap.compute_allocations` | Market-cap weighting (3:1 ratio), fallback on missing caps, total invariant |
 
-**Running test suite:**
+**Run all tests (recommended):**
 
 ```bash
 # pytest is included in requirements.txt — no separate install needed
+python -m pytest tests/ -v
+```
+
+**Run each test file separately:**
+
+```bash
+# Core project functions (auth, portfolio, risk, allocation)
 python -m pytest tests/test_project_functions.py -v
+
+# Quote-fetching reliability layer (cache, retries, rate limiting)
+python -m pytest tests/test_quotes.py -v
 ```
 
 ---
